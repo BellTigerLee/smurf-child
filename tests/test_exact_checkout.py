@@ -114,3 +114,37 @@ def test_exact_checkout_rejects_submodule(tmp_path: Path) -> None:
 
     # Then: submodules are excluded from the plain-file bundle.
     assert caught.value.category is ContractErrorCategory.EXACT_CHECKOUT
+
+
+def test_exact_checkout_rejects_nested_repository_root(tmp_path: Path) -> None:
+    # Given: a valid repository but the requested root is a nested directory.
+    root, sha = _repository(tmp_path)
+    nested = root / "nested"
+    nested.mkdir()
+
+    # When: checkout proof is requested below the Git toplevel.
+    with pytest.raises(ContractValidationError) as caught:
+        _ = verify_checkout(nested, _expectation(sha))
+
+    # Then: repository-relative semantics cannot be shifted.
+    assert caught.value.category is ContractErrorCategory.EXACT_CHECKOUT
+
+
+def test_exact_checkout_rejects_ignored_yaml_drift(tmp_path: Path) -> None:
+    # Given: Git ignores an extra manifest, leaving porcelain status clean.
+    root, sha = _repository(tmp_path)
+    _ = (root / ".git" / "info" / "exclude").write_text(
+        "deploy/dev/ignored.yaml\n", encoding="utf-8"
+    )
+    _ = (root / "deploy" / "dev" / "ignored.yaml").write_text(
+        "apiVersion: v1\nkind: ConfigMap\nmetadata: {name: ignored}\n",
+        encoding="utf-8",
+    )
+    assert _git(root, "status", "--porcelain", "--untracked-files=all") == ""
+
+    # When: tracked checkout proof is derived.
+    with pytest.raises(ContractValidationError) as caught:
+        _ = verify_checkout(root, _expectation(sha))
+
+    # Then: ignored filesystem additions cannot enter signed bundle bytes.
+    assert caught.value.category is ContractErrorCategory.EXACT_CHECKOUT

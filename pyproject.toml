@@ -33,14 +33,13 @@ typeCheckingMode = "all"
 pythonVersion = "3.13"
 pythonPlatform = "All"
 include = ["src", "tests"]
+stubPath = "typings"
 exclude = [
     "**/__pycache__",
     "**/.venv",
     "**/build",
     "**/dist",
-    "src/smurf_child/yaml_adapter.py",
 ]
-ignore = ["src/smurf_child/yaml_adapter.py"]
 reportUnusedCallResult = "error"
 reportUnnecessaryTypeIgnoreComment = "error"
 reportUnnecessaryComparison = false
@@ -59,6 +58,7 @@ ignore = ["COM812", "ISC001", "D203", "D213", "CPY001", "TD002", "TD003", "FIX00
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101", "ARG", "PLR2004", "SLF001", "D"]
+"typings/**/*.pyi" = ["N803"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

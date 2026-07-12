@@ -74,3 +74,27 @@ target: c
 
     # Then: duplicate keys cannot silently override signed intent.
     assert caught.value.category is ContractErrorCategory.REQUEST_MALFORMED
+
+
+@pytest.mark.parametrize("scalar", ["012", "+12", "1:20", "~", "Null", ""])
+def test_manifest_rejects_noncanonical_implicit_scalar(
+    scalar: str, tmp_path: Path
+) -> None:
+    # Given: a plain scalar spelling that JSON does not permit.
+    manifest = tmp_path / "implicit.yaml"
+    _ = manifest.write_text(
+        f"""apiVersion: v1
+kind: ConfigMap
+metadata: {{name: sample}}
+data:
+  value: {scalar}
+""",
+        encoding="utf-8",
+    )
+
+    # When: the scalar crosses the YAML boundary.
+    with pytest.raises(ContractValidationError) as caught:
+        _ = validate_manifests(manifest)
+
+    # Then: implicit coercion is rejected.
+    assert caught.value.category is ContractErrorCategory.MANIFEST_MALFORMED

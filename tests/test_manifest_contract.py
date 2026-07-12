@@ -91,3 +91,48 @@ def test_manifest_rejects_non_yaml_format() -> None:
 
     # Then: source format is rejected independently of content.
     assert caught.value.category is ContractErrorCategory.FORBIDDEN_FORMAT
+
+
+@pytest.mark.parametrize(
+    ("kind", "pod_spec", "container_field", "image_line"),
+    [
+        ("Deployment", "template:\n    spec:", "containers", ""),
+        ("Deployment", "template:\n    spec:", "initContainers", "image: 123"),
+        ("Deployment", "template:\n    spec:", "ephemeralContainers", ""),
+        ("Job", "template:\n    spec:", "containers", ""),
+        (
+            "CronJob",
+            "jobTemplate:\n    spec:\n      template:\n        spec:",
+            "containers",
+            "",
+        ),
+    ],
+)
+def test_workload_rejects_missing_or_non_string_image(
+    kind: str,
+    pod_spec: str,
+    container_field: str,
+    image_line: str,
+    tmp_path: Path,
+) -> None:
+    # Given: an allowed workload with an invalid pod container image.
+    manifest = tmp_path / "workload.yaml"
+    indent = "          " if kind == "CronJob" else "      "
+    image = f"\n{indent}    {image_line}" if image_line else ""
+    _ = manifest.write_text(
+        "".join(
+            (
+                f"apiVersion: batch/v1\nkind: {kind}\nmetadata: {{name: sample}}\n",
+                f"spec:\n  {pod_spec}\n{indent}{container_field}:\n",
+                f"{indent}  - name: sample{image}\n",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    # When: every pod container list is validated.
+    with pytest.raises(ContractValidationError) as caught:
+        _ = validate_manifests(manifest)
+
+    # Then: absent and non-string images fail closed.
+    assert caught.value.category is ContractErrorCategory.IMMUTABLE_IMAGE

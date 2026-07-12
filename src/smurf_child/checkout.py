@@ -64,6 +64,8 @@ def verify_checkout(root: Path, expected: CheckoutExpectation) -> ExactCheckout:
         or path.parts != ("deploy", "dev")
     ):
         raise ContractValidationError(ContractErrorCategory.EXACT_CHECKOUT, root)
+    if Path(_git(normalized_root, "rev-parse", "--show-toplevel")) != normalized_root:
+        raise ContractValidationError(ContractErrorCategory.EXACT_CHECKOUT, root)
     if _git(normalized_root, "remote", "get-url", "origin") != expected.repository:
         raise ContractValidationError(ContractErrorCategory.EXACT_CHECKOUT, root)
     head = _git(normalized_root, "rev-parse", "HEAD")
@@ -94,8 +96,18 @@ def verify_checkout(root: Path, expected: CheckoutExpectation) -> ExactCheckout:
         manifests.append(relative)
     if not manifests:
         raise ContractValidationError(ContractErrorCategory.EXACT_CHECKOUT, deploy)
+    tracked = tuple(
+        line
+        for line in _git(
+            normalized_root, "ls-files", "--", "deploy/dev/*.yaml"
+        ).splitlines()
+        if line
+    )
+    filesystem = tuple(sorted(manifests, key=lambda value: value.encode()))
+    if filesystem != tuple(sorted(tracked, key=lambda value: value.encode())):
+        raise ContractValidationError(ContractErrorCategory.EXACT_CHECKOUT, deploy)
     return ExactCheckout(
         expected.repository,
         head,
-        tuple(sorted(manifests, key=lambda value: value.encode())),
+        filesystem,
     )

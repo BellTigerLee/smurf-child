@@ -1,10 +1,11 @@
-"""PyYAML node adapter isolated from incomplete third-party type stubs."""
+"""Typed strict PyYAML node adapter."""
 
+import re
 from pathlib import Path
 from typing import assert_never, override
 
 import yaml
-from yaml.nodes import MappingNode, Node, ScalarNode, SequenceNode
+from yaml.nodes import MappingNode, ScalarNode, SequenceNode
 from yaml.tokens import AliasToken, AnchorToken
 
 from smurf_child.models import ContractErrorCategory, ContractValidationError
@@ -18,6 +19,7 @@ _SCALAR_TAGS = {
     "tag:yaml.org,2002:bool",
     "tag:yaml.org,2002:null",
 }
+_INTEGER = re.compile(r"^(?:0|-[1-9][0-9]*|[1-9][0-9]*)$")
 
 
 class StrictLoader(yaml.SafeLoader):
@@ -45,23 +47,29 @@ class StrictLoader(yaml.SafeLoader):
         return super().construct_mapping(node, deep=deep)
 
 
-def _validate_node(node: Node) -> None:
+def _validate_scalar(node: ScalarNode) -> None:
+    if node.tag not in _SCALAR_TAGS:
+        raise yaml.constructor.ConstructorError(
+            None, None, f"forbidden scalar {node.tag}", node.start_mark
+        )
+    if node.tag == "tag:yaml.org,2002:int" and _INTEGER.fullmatch(node.value) is None:
+        raise yaml.constructor.ConstructorError(
+            None, None, "non-JSON integer", node.start_mark
+        )
+    if node.tag == "tag:yaml.org,2002:bool" and node.value not in {"true", "false"}:
+        raise yaml.constructor.ConstructorError(
+            None, None, "non-JSON boolean", node.start_mark
+        )
+    if node.tag == "tag:yaml.org,2002:null" and node.value != "null":
+        raise yaml.constructor.ConstructorError(
+            None, None, "non-JSON null", node.start_mark
+        )
+
+
+def _validate_node(node: ScalarNode | SequenceNode | MappingNode) -> None:
     match node:
-        case ScalarNode(tag=tag, value=value):
-            if tag not in _SCALAR_TAGS:
-                raise yaml.constructor.ConstructorError(
-                    None, None, f"forbidden scalar {tag}", node.start_mark
-                )
-            if tag == "tag:yaml.org,2002:int" and (
-                value.startswith(("0x", "0o", "0b")) or "_" in value
-            ):
-                raise yaml.constructor.ConstructorError(
-                    None, None, "non-JSON integer", node.start_mark
-                )
-            if tag == "tag:yaml.org,2002:bool" and value not in {"true", "false"}:
-                raise yaml.constructor.ConstructorError(
-                    None, None, "non-JSON boolean", node.start_mark
-                )
+        case ScalarNode():
+            _validate_scalar(node)
         case SequenceNode(value=values):
             for child in values:
                 _validate_node(child)
@@ -75,12 +83,6 @@ def _validate_node(node: Node) -> None:
                 _validate_node(value)
         case _ as unreachable:
             assert_never(unreachable)
-            raise yaml.constructor.ConstructorError(
-                None,
-                None,
-                f"forbidden node {type(unreachable).__name__}",
-                node.start_mark,
-            )
 
 
 def load_json_yaml(path: Path, category: ContractErrorCategory) -> JsonValue:

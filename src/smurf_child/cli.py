@@ -89,22 +89,24 @@ def evidence_payload(
         )
         bundle = build_bundle(root, checkout.manifest_paths)
         evidence = build_evidence(
-            EvidenceInput(
-                workflow_issuer=metadata.workflow_issuer,
-                workflow_subject=metadata.workflow_subject,
-                workflow_name=metadata.workflow_name,
-                run_id=metadata.run_id,
-                repository=checkout.repository,
-                path="deploy/dev",
-                sha=checkout.head_sha,
-                build_result=metadata.build_result,
-                test_result=metadata.test_result,
-                bundle_digest=bundle.digest,
-                image_digests=tuple(
-                    image.rsplit("@", maxsplit=1)[1] for image in bundle.images
-                ),
-                started_at=metadata.started_at,
-                completed_at=metadata.completed_at,
+            EvidenceInput.model_validate(
+                {
+                    "workflow_issuer": metadata.workflow_issuer,
+                    "workflow_subject": metadata.workflow_subject,
+                    "workflow_name": metadata.workflow_name,
+                    "run_id": metadata.run_id,
+                    "repository": checkout.repository,
+                    "path": "deploy/dev",
+                    "sha": checkout.head_sha,
+                    "build_passed": metadata.build_result == "success",
+                    "tests_passed": metadata.test_result == "success",
+                    "bundle_digest": bundle.digest,
+                    "image_digests": tuple(
+                        image.rsplit("@", maxsplit=1)[1] for image in bundle.images
+                    ),
+                    "started_at": metadata.started_at,
+                    "completed_at": metadata.completed_at,
+                }
             )
         )
     except ContractValidationError as error:
