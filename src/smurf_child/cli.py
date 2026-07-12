@@ -5,7 +5,8 @@ from typing import Annotated
 
 import typer
 
-from smurf_child.contract import validate_manifests
+from smurf_child.contract import validate_repository
+from smurf_child.models import PlannedBehaviorError
 
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 
@@ -23,8 +24,8 @@ def validate(
 ) -> None:
     """Validate the child repository contract when Task 4 implements it."""
     try:
-        validate_manifests(root / "deploy" / "dev")
-    except NotImplementedError as error:
+        _ = validate_repository(root)
+    except PlannedBehaviorError as error:
         typer.echo(str(error), err=True)
         raise typer.Exit(code=2) from None
 

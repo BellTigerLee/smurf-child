@@ -21,20 +21,16 @@ jobs:
       - name: Install Python 3.13
         run: uv python install 3.13
       - name: Sync frozen environment
-        run: uv sync --frozen
+        run: |
+          uv lock --check
+          uv sync --frozen
       - name: Check formatting
         run: uv run --frozen ruff format --check .
       - name: Lint scaffold
         run: uv run --frozen ruff check .
       - name: Type-check scaffold
         run: uv run --frozen basedpyright
-      - name: Confirm expected RED contract categories
-        shell: bash
-        run: |
-          set +e
-          output="$(uv run --frozen pytest -q tests/test_request_contract.py tests/test_manifest_contract.py tests/test_cli.py tests/test_red_fixtures.py 2>&1)"
-          status=$?
-          set -e
-          printf '%s\n' "$output"
-          test "$status" -ne 0
-          grep -q 'PLANNED_UNIMPLEMENTED:' <<<"$output"
+      - name: Test exact RED inventory verifier
+        run: uv run --frozen pytest -q tests/test_red_contract_runner.py
+      - name: Confirm complete expected RED inventory
+        run: uv run --frozen smurf-child-red-contract

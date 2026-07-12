@@ -1,86 +1,100 @@
 from pathlib import Path
 
+import pytest
+
 from smurf_child.contract import parse_request
+from smurf_child.models import (
+    ChildRequest,
+    ContractErrorCategory,
+    ContractValidationError,
+)
 
 
-def test_request_accepts_inert_literal_target_metadata() -> None:
-    # Given: an inert child request with a literal federation target.
+def test_request_parses_inert_identity_and_both_target() -> None:
+    # Given: the repository's inert request file.
     request_path = Path("smurfx/request.yaml")
 
-    # When: the request boundary parses the file.
-    parse_request(request_path)
+    # When: the request is parsed.
+    request = parse_request(request_path)
 
-    # Then: RED records that request-schema behavior is not implemented.
+    # Then: stable identities and the literal target are typed values.
+    assert request == ChildRequest(
+        apiVersion="smurfx.dev/v1alpha1",
+        kind="ChildRequest",
+        developerId="developer-belltigerlee",
+        childId="smurf-child",
+        workloadId="sample-api",
+        environment="dev",
+        target="both",
+    )
 
 
-def test_request_derives_stable_ids_without_commit_identity() -> None:
-    # Given: a request whose identity is independent from a Git commit.
-    request_path = Path("smurfx/request.yaml")
-
-    # When: the request boundary derives stable identifiers.
-    parse_request(request_path, behavior="stable_ids")
-
-    # Then: RED records that stable-ID behavior is not implemented.
-
-
-def test_request_accepts_literal_b_target(tmp_path: Path) -> None:
-    # Given: a syntactically valid request using one allowed literal target.
+@pytest.mark.parametrize("target", ["b", "c", "both"])
+def test_request_parses_each_literal_target(target: str, tmp_path: Path) -> None:
+    # Given: a valid request containing one literal target.
     request_path = tmp_path / "request.yaml"
     _ = request_path.write_text(
-        """apiVersion: smurfx.dev/v1alpha1
+        f"""apiVersion: smurfx.dev/v1alpha1
 kind: ChildRequest
 developerId: developer-belltigerlee
 childId: smurf-child
 workloadId: sample-api
 environment: dev
-target: b
+target: {target}
 """,
         encoding="utf-8",
     )
 
-    # When: the request boundary parses the literal.
-    parse_request(request_path, behavior="target_literal")
+    # When: the request is parsed.
+    request = parse_request(request_path)
 
-    # Then: RED records that literal-target behavior is not implemented.
-
-
-def test_request_accepts_literal_c_target(tmp_path: Path) -> None:
-    # Given: a syntactically valid request using the c target.
-    request_path = tmp_path / "request.yaml"
-    _ = request_path.write_text(
-        """apiVersion: smurfx.dev/v1alpha1
-kind: ChildRequest
-developerId: developer-belltigerlee
-childId: smurf-child
-workloadId: sample-api
-environment: dev
-target: c
-""",
-        encoding="utf-8",
-    )
-
-    # When: the request boundary parses the literal.
-    parse_request(request_path, behavior="target_literal")
-
-    # Then: RED records that literal-target behavior is not implemented.
+    # Then: the target remains the exact requested literal.
+    assert request.target == target
 
 
-def test_request_accepts_literal_both_target(tmp_path: Path) -> None:
-    # Given: a syntactically valid request using the both target.
-    request_path = tmp_path / "request.yaml"
-    _ = request_path.write_text(
-        """apiVersion: smurfx.dev/v1alpha1
-kind: ChildRequest
-developerId: developer-belltigerlee
-childId: smurf-child
-workloadId: sample-api
-environment: dev
-target: both
-""",
-        encoding="utf-8",
-    )
+def test_request_rejects_nonexistent_file(tmp_path: Path) -> None:
+    # Given: a request path that does not exist.
+    request_path = tmp_path / "missing.yaml"
 
-    # When: the request boundary parses the literal.
-    parse_request(request_path, behavior="target_literal")
+    # When: the request is parsed.
+    with pytest.raises(ContractValidationError) as caught:
+        _ = parse_request(request_path)
 
-    # Then: RED records that literal-target behavior is not implemented.
+    # Then: absence has its own typed category.
+    assert caught.value.category is ContractErrorCategory.REQUEST_NOT_FOUND
+
+
+def test_request_rejects_malformed_yaml() -> None:
+    # Given: a malformed YAML request fixture.
+    request_path = Path("tests/fixtures/adversarial/malformed-request.yaml")
+
+    # When: the request is parsed.
+    with pytest.raises(ContractValidationError) as caught:
+        _ = parse_request(request_path)
+
+    # Then: syntax failure is distinct from absence and schema failure.
+    assert caught.value.category is ContractErrorCategory.REQUEST_MALFORMED
+
+
+def test_request_rejects_invalid_schema() -> None:
+    # Given: valid YAML with an unsupported target literal.
+    request_path = Path("tests/fixtures/adversarial/invalid-request.yaml")
+
+    # When: the request is parsed.
+    with pytest.raises(ContractValidationError) as caught:
+        _ = parse_request(request_path)
+
+    # Then: typed schema rejection is reported.
+    assert caught.value.category is ContractErrorCategory.REQUEST_SCHEMA
+
+
+def test_request_rejects_child_owned_effective_policy() -> None:
+    # Given: a request that improperly embeds effective policy.
+    request_path = Path("tests/fixtures/adversarial/effective-policy-request.yaml")
+
+    # When: the request is parsed.
+    with pytest.raises(ContractValidationError) as caught:
+        _ = parse_request(request_path)
+
+    # Then: child-owned effective policy has an exact category.
+    assert caught.value.category is ContractErrorCategory.EFFECTIVE_POLICY

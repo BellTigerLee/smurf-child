@@ -16,10 +16,12 @@ dependencies = [
 
 [project.scripts]
 smurf-child = "smurf_child.cli:main"
+smurf-child-red-contract = "smurf_child.red_contract:main"
 
 [dependency-groups]
 dev = [
     "basedpyright>=1.29,<2",
+    "defusedxml>=0.7,<1",
     "pytest>=8.4,<9",
     "ruff>=0.12,<1",
 ]

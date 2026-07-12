@@ -7,18 +7,21 @@ effective policy, reconciliation, signing, or federation runtime objects.
 
 ## Current state
 
-Task 2 is deliberately RED. The public parser and validator entry points are
-nonfunctional scaffolding that report `PLANNED_UNIMPLEMENTED:<category>` until
-Task 4 implements the contract. A nonzero contract-test result is expected;
-Ruff, basedpyright, package setup, and CLI help must remain green.
+Task 2 is deliberately RED. The public parser and validator entry points accept
+real paths but report their fixed `PLANNED_UNIMPLEMENTED:<boundary>` until Task 4
+implements the contract. Tests assert eventual typed values and exact validation
+categories. The RED verifier requires every expected node, status, and diagnostic;
+an arbitrary nonzero pytest result is rejected.
 
 ## Local validation
 
 ```console
 uv sync --frozen
+uv lock --check
 uv run --frozen ruff format --check .
 uv run --frozen ruff check .
 uv run --frozen basedpyright
+uv run --frozen pytest -q tests/test_red_contract_runner.py
 just red-contract
 uv run --frozen smurf-child --help
 uv run --frozen smurf-child validate --root .
