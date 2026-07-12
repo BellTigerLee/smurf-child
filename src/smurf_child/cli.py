@@ -88,8 +88,8 @@ def evidence_payload(
             root, CheckoutExpectation(_CANONICAL_ORIGIN, head, "deploy/dev")
         )
         bundle = build_bundle(root, checkout.manifest_paths)
-        evidence = build_evidence(
-            EvidenceInput.model_validate(
+        try:
+            evidence_input = EvidenceInput.model_validate(
                 {
                     "workflow_issuer": metadata.workflow_issuer,
                     "workflow_subject": metadata.workflow_subject,
@@ -108,7 +108,12 @@ def evidence_payload(
                     "completed_at": metadata.completed_at,
                 }
             )
-        )
+        except ValidationError as error:
+            raise ContractValidationError(
+                ContractErrorCategory.EVIDENCE_INPUT,
+                root / "smurfx" / "ci-metadata.yaml",
+            ) from error
+        evidence = build_evidence(evidence_input)
     except ContractValidationError as error:
         _fail(error)
     output.parent.mkdir(parents=True, exist_ok=True)
