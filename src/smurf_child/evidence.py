@@ -4,6 +4,7 @@ import hashlib
 import re
 import struct
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Annotated, ClassVar, Final, Literal
 
 import rfc8785
@@ -15,6 +16,8 @@ _SHA = re.compile(r"^[0-9a-f]{40}$")
 _TIME = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$")
 _DUPLICATE_DIGEST_CODE: Final = "duplicate_image_digest"
 _DUPLICATE_DIGEST_MESSAGE: Final = "image digests must be unique"
+_INVALID_TIMESTAMP_CODE: Final = "invalid_evidence_timestamp"
+_INVALID_TIMESTAMP_MESSAGE: Final = "timestamp is not a valid UTC calendar time"
 type AnnotatedDigest = str
 type NonEmpty = Annotated[str, Field(min_length=1)]
 type CanonicalRepository = Annotated[
@@ -55,6 +58,18 @@ class EvidenceInput(BaseModel):
         if len(values) != len(set(values)):
             raise PydanticCustomError(_DUPLICATE_DIGEST_CODE, _DUPLICATE_DIGEST_MESSAGE)
         return values
+
+    @field_validator("started_at", "completed_at")
+    @classmethod
+    def valid_timestamp(cls, value: str) -> str:
+        """Require semantic validity while preserving exact timestamp text."""
+        try:
+            _ = datetime.strptime(value, "%Y-%m-%dT%H:%M:%S.%f%z")
+        except ValueError as error:
+            raise PydanticCustomError(
+                _INVALID_TIMESTAMP_CODE, _INVALID_TIMESTAMP_MESSAGE
+            ) from error
+        return value
 
 
 @dataclass(frozen=True, slots=True)

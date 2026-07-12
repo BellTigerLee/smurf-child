@@ -156,6 +156,57 @@ def test_evidence_input_rejects_unknown_and_wire_named_input() -> None:
         _ = EvidenceInput.model_validate(candidate)
 
 
+@pytest.mark.parametrize(
+    "timestamp",
+    [
+        "2026-13-01T00:00:00.000000Z",
+        "2026-04-31T00:00:00.000000Z",
+        "2025-02-29T00:00:00.000000Z",
+        "2026-01-01T24:00:00.000000Z",
+        "2026-01-01T23:60:00.000000Z",
+        "2026-01-01T23:59:60.000000Z",
+    ],
+)
+@pytest.mark.parametrize("field", ["started_at", "completed_at"])
+def test_evidence_input_rejects_semantically_invalid_timestamp(
+    field: str, timestamp: str
+) -> None:
+    # Given: exact timestamp syntax containing an impossible calendar/time value.
+    candidate = _valid_evidence_input().model_dump()
+    candidate[field] = timestamp
+
+    # When/Then: semantic timestamp validation rejects the exact field.
+    with pytest.raises(ValidationError) as caught:
+        _ = EvidenceInput.model_validate(candidate)
+    assert caught.value.errors()[0]["loc"] == (field,)
+
+
+@pytest.mark.parametrize(
+    ("started_at", "completed_at"),
+    [
+        ("2024-02-29T00:00:00.000000Z", "2024-02-29T00:00:00.000001Z"),
+        ("2026-12-31T23:59:59.999998Z", "2026-12-31T23:59:59.999999Z"),
+    ],
+)
+def test_evidence_input_preserves_valid_edge_timestamps(
+    started_at: str, completed_at: str
+) -> None:
+    # Given: valid leap-day or end-of-day timestamps in exact wire form.
+    candidate = _valid_evidence_input().model_dump()
+    candidate["started_at"] = started_at
+    candidate["completed_at"] = completed_at
+
+    # When: the evidence boundary parses and serializes the values.
+    parsed = EvidenceInput.model_validate(candidate)
+    payload = build_evidence(parsed).payload
+
+    # Then: no normalization changes the signed timestamp text.
+    assert parsed.started_at == started_at
+    assert parsed.completed_at == completed_at
+    assert f'"startedAt":"{started_at}"'.encode() in payload
+    assert f'"completedAt":"{completed_at}"'.encode() in payload
+
+
 def _valid_evidence_input() -> EvidenceInput:
     return EvidenceInput.model_validate(
         {
