@@ -100,6 +100,16 @@ TEST_MODULES: Final = (
 
 def verify_inventory(records: tuple[ObservedTest, ...], exit_code: int) -> None:
     """Require the exact node, status, signature, count, and pytest exit code."""
+    expected_count = len(EXPECTED_TESTS)
+    if len(records) != expected_count:
+        message = (
+            f"observed record count: expected {expected_count}, got {len(records)}"
+        )
+        raise InventoryMismatchError(message)
+    observed_node_ids = tuple(record.node_id for record in records)
+    if len(set(observed_node_ids)) != expected_count:
+        message = "duplicate observed node IDs"
+        raise InventoryMismatchError(message)
     expected_by_node = {test.node_id: test for test in EXPECTED_TESTS}
     observed_by_node = {record.node_id: record for record in records}
     if exit_code != 1:
