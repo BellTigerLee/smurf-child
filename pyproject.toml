@@ -18,6 +18,7 @@ dependencies = [
 [project.scripts]
 smurf-child = "smurf_child.cli:main"
 smurf-child-red-contract = "smurf_child.red_contract:main"
+smurf-child-handoff-guard = "smurf_child.handoff_cli:main"
 
 [dependency-groups]
 dev = [
