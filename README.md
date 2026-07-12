@@ -7,11 +7,9 @@ effective policy, reconciliation, signing, or federation runtime objects.
 
 ## Current state
 
-Task 2 is deliberately RED. The public parser and validator entry points accept
-real paths but report their fixed `PLANNED_UNIMPLEMENTED:<boundary>` until Task 4
-implements the contract. Tests assert eventual typed values and exact validation
-categories. The RED verifier requires every expected node, status, and diagnostic;
-an arbitrary nonzero pytest result is rejected.
+The child boundary parses a frozen inert request, validates a strict plain-YAML
+manifest inventory, proves an exact clean Git checkout, and emits deterministic
+unsigned RFC 8785 evidence payload bytes. Signing and key storage remain external.
 
 ## Local validation
 
@@ -21,14 +19,15 @@ uv lock --check
 uv run --frozen ruff format --check .
 uv run --frozen ruff check .
 uv run --frozen basedpyright
-uv run --frozen pytest -q tests/test_red_contract_runner.py
-just red-contract
+uv run --frozen pytest
 uv run --frozen smurf-child --help
 uv run --frozen smurf-child validate --root .
+uv run --frozen smurf-child evidence-payload --root . --output /tmp/evidence.json
 ```
 
-The final command currently exits with code 2 and a planned-unimplemented
-category without a traceback. No build, publish, signing, or deployment occurs.
+Validation reports typed nonzero categories without tracebacks. Evidence output
+is written atomically and contains no signature, key ID, trust envelope, or key.
+No build, publish, signing, deployment, or network control operation occurs.
 
 ## Child boundary
 

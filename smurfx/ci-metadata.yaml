@@ -1,0 +1,8 @@
+workflowIssuer: https://token.actions.githubusercontent.com
+workflowSubject: repo:BellTigerLee/smurf-child:ref:refs/heads/poc/smurfx-child-dev-contract
+workflowName: validate
+runId: "1001"
+buildResult: success
+testResult: success
+startedAt: "2026-07-12T06:00:00.000000Z"
+completedAt: "2026-07-12T06:01:00.000000Z"

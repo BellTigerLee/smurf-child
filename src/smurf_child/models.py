@@ -1,4 +1,4 @@
-"""Frozen child contract boundary models reserved for Task 4."""
+"""Frozen public models and typed contract failures."""
 
 from enum import StrEnum, unique
 from pathlib import Path
@@ -15,7 +15,7 @@ type Target = Literal["b", "c", "both"]
 
 @unique
 class ContractErrorCategory(StrEnum):
-    """Closed validation categories expected from the future implementation."""
+    """Closed fail-closed error categories exposed by the CLI."""
 
     REQUEST_NOT_FOUND = "REQUEST_NOT_FOUND"
     REQUEST_MALFORMED = "REQUEST_MALFORMED"
@@ -24,77 +24,44 @@ class ContractErrorCategory(StrEnum):
     MANIFEST_NOT_FOUND = "MANIFEST_NOT_FOUND"
     MANIFEST_MALFORMED = "MANIFEST_MALFORMED"
     FORBIDDEN_KIND = "FORBIDDEN_KIND"
+    FORBIDDEN_NAMESPACE = "FORBIDDEN_NAMESPACE"
     IMMUTABLE_IMAGE = "IMMUTABLE_IMAGE"
     FORBIDDEN_FORMAT = "FORBIDDEN_FORMAT"
-
-
-@unique
-class PlannedBoundary(StrEnum):
-    """Unimplemented Task 4 boundaries, selected only by the called API."""
-
-    REQUEST_PARSER = "REQUEST_PARSER"
-    MANIFEST_VALIDATOR = "MANIFEST_VALIDATOR"
-    REPOSITORY_VALIDATOR = "REPOSITORY_VALIDATOR"
-
-
-class PlannedBehaviorError(NotImplementedError):
-    """Signal that a concrete Task 4 boundary remains intentionally RED."""
-
-    __slots__: ClassVar[tuple[str, ...]] = ("_boundary",)
-    _boundary: PlannedBoundary
-
-    def __init__(self, boundary: PlannedBoundary) -> None:
-        """Initialize an unimplemented boundary signal."""
-        self._boundary = boundary
-        super().__init__(str(self))
-
-    @property
-    def boundary(self) -> PlannedBoundary:
-        """Return the API boundary that remains unimplemented."""
-        return self._boundary
-
-    @override
-    def __str__(self) -> str:
-        """Render the stable RED inventory signature."""
-        return f"PLANNED_UNIMPLEMENTED:{self.boundary.value}"
+    EXACT_CHECKOUT = "EXACT_CHECKOUT"
+    EVIDENCE_INPUT = "EVIDENCE_INPUT"
 
 
 class ContractValidationError(Exception):
-    """Future typed validation failure exposed to tests and the CLI."""
+    """Typed validation failure with its offending path."""
 
     __slots__: ClassVar[tuple[str, ...]] = ("_category", "_path")
-    _category: ContractErrorCategory
-    _path: Path
 
     def __init__(self, category: ContractErrorCategory, path: Path) -> None:
-        """Initialize a future categorized validation failure."""
-        self._category = category
-        self._path = path
+        """Create a categorized failure for one boundary path."""
+        self._category: ContractErrorCategory = category
+        self._path: Path = path
         super().__init__(str(self))
 
     @property
     def category(self) -> ContractErrorCategory:
-        """Return the exact future validation category."""
+        """Return the stable failure category."""
         return self._category
 
     @property
     def path(self) -> Path:
-        """Return the input path that failed validation."""
+        """Return the offending boundary path."""
         return self._path
 
     @override
     def __str__(self) -> str:
-        """Render the category and repository-relative input path."""
         return f"{self.category.value}:{self.path.as_posix()}"
 
 
 class ChildRequest(BaseModel):
-    """Future child-to-federation request boundary shape."""
+    """Inert child request parsed at the file boundary."""
 
     model_config: ClassVar[ConfigDict] = ConfigDict(
-        frozen=True,
-        extra="forbid",
-        populate_by_name=True,
+        frozen=True, extra="forbid", populate_by_name=True, strict=True
     )
 
     api_version: Literal["smurfx.dev/v1alpha1"] = Field(alias="apiVersion")
@@ -107,17 +74,18 @@ class ChildRequest(BaseModel):
 
 
 class ManifestInventory(BaseModel):
-    """Future validated inventory of namespace-neutral child resources."""
+    """Validated namespace-neutral child resource inventory."""
 
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
 
     kinds: tuple[str, ...]
     images: tuple[str, ...]
-    namespace_neutral: bool
+    namespace_neutral: Literal[True]
+    bundle_digest: str = ""
 
 
 class RepositoryValidation(BaseModel):
-    """Future successful repository-level validation result."""
+    """Successful repository-level validation result."""
 
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True, extra="forbid")
 
