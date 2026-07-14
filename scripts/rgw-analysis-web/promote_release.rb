@@ -16,18 +16,14 @@ EXPECTED_RELEASE = {
   "apiVersion" => "scalex.io/v1alpha1",
   "kind" => "FederationRelease",
   "name" => "rgw-analysis-web",
-  "environment" => "poc",
-  "namespace" => "scalex-rgw-analysis-web",
+  "environment" => "cuty",
+  "namespace" => "scalex-cuty-rgw-analysis-web",
   "renderer" => EXPECTED_RENDERER
 }.freeze
 EXPECTED_PATHS = {
-  "values" => "releases/poc/rgw-analysis-web/values.yaml",
-  "dependencies" => "releases/poc/rgw-analysis-web/dependencies",
-  "policy" => "releases/poc/rgw-analysis-web/karmada"
-}.freeze
-APPROVED_EXISTING_SOURCES = {
-  "https://github.com/SJoon99/scalex-feature-poc.git" => "chart",
-  EXPECTED_REPOSITORY => EXPECTED_CHART
+  "values" => "releases/cuty/rgw-analysis-web/values.yaml",
+  "dependencies" => "releases/cuty/rgw-analysis-web/dependencies",
+  "policy" => "releases/cuty/rgw-analysis-web/karmada"
 }.freeze
 FULL_SHA = /\A(?!0{40})[0-9a-f]{40}\z/
 DIGEST = /\Asha256:[0-9a-f]{64}\z/
@@ -106,8 +102,7 @@ def validate_release(release)
 
   source = release["source"]
   abort "invalid current Federation source" unless source.is_a?(Hash) && source.keys.sort == %w[path repoURL revision]
-  approved_path = APPROVED_EXISTING_SOURCES[source["repoURL"]]
-  abort "unapproved current Federation source" unless approved_path && source["path"] == approved_path
+  abort "unapproved current Federation source" unless source["repoURL"] == EXPECTED_REPOSITORY && source["path"] == EXPECTED_CHART
   revision = source["revision"]
   abort "invalid current Federation source revision" unless revision.is_a?(String) && revision.match?(FULL_SHA)
 
@@ -119,59 +114,38 @@ def validate_release(release)
   mode
 end
 
-def migrate_poc_values(values, artifact)
-  abort "unexpected legacy Federation values" unless values.keys.sort == %w[images releaseLabel resultWeb s3]
-
-  s3 = values.fetch("s3")
-  service = values.fetch("resultWeb").fetch("service")
-  legacy_images = values.fetch("images")
-  abort "unexpected legacy Federation images" unless legacy_images.keys.sort == %w[awsCli nginx]
-
-  pull_policies = {
-    "flow" => legacy_images.fetch("awsCli").fetch("pullPolicy"),
-    "web" => legacy_images.fetch("nginx").fetch("pullPolicy")
-  }
-  images = EXPECTED_COMPONENTS.to_h do |component, repository|
-    promoted = artifact.fetch("components").fetch(component)
-    [component, {
-      "repository" => repository,
-      "tag" => promoted.fetch("tag"),
-      "digest" => promoted.fetch("digest"),
-      "sourceRevision" => promoted.fetch("sourceRevision"),
-      "pullPolicy" => pull_policies.fetch(component)
-    }]
-  end
-  {
-    "runId" => "poc-rgw-analysis-web",
-    "resultSync" => { "intervalSeconds" => s3.fetch("syncIntervalSeconds") },
-    "storage" => {
-      "endpointUrl" => s3.fetch("endpointUrl"), "bucket" => s3.fetch("bucket"),
-      "region" => s3.fetch("region"), "waitSeconds" => s3.fetch("waitSeconds"),
-      "pollIntervalSeconds" => s3.fetch("pollIntervalSeconds")
-    },
-    "credentials" => {
-      "existingSecret" => s3.fetch("secretName"), "accessKeyIdKey" => "access-key-id",
-      "secretAccessKeyKey" => "secret-access-key", "sessionTokenKey" => "session-token"
-    },
-    "images" => images,
-    "service" => { "port" => service.fetch("port"), "annotations" => service.fetch("annotations") }
-  }
-rescue KeyError => error
-  abort "legacy Federation values missing field: #{error.message}"
-end
-
 def release_paths(root)
   root_path = Pathname.new(root).expand_path
-  abort "Federation checkout is absent" unless root_path.directory?
-
-  base = root_path.join("releases/poc/rgw-analysis-web")
-  [base.join("release.yaml"), base.join("values.yaml")].each do |path|
-    abort "missing Federation target: #{path}" unless path.file?
+  begin
+    root_stat = File.lstat(root_path)
+  rescue Errno::ENOENT
+    abort "Federation checkout is absent"
   end
+  abort "unsafe symlink in Federation release path: #{root_path}" if root_stat.symlink?
+  abort "Federation checkout is absent" unless root_stat.directory?
+
+  releases = root_path.join("releases")
+  cuty = releases.join("cuty")
+  base = root_path.join("releases/cuty/rgw-analysis-web")
+  paths = [base.join("release.yaml"), base.join("values.yaml")]
+  [releases, cuty, base, *paths].each do |path|
+    begin
+      stat = File.lstat(path)
+    rescue Errno::ENOENT
+      abort "missing Federation target: #{paths.fetch(0)}"
+    end
+    abort "unsafe symlink in Federation release path: #{path}" if stat.symlink?
+    if paths.include?(path)
+      abort "missing Federation target: #{path}" unless stat.file?
+    else
+      abort "invalid Federation release directory: #{path}" unless stat.directory?
+    end
+  end
+
+  paths
 end
 
 def render_documents(release, values, artifact)
-  previous_source = release.fetch("source")
   release["renderer"] = EXPECTED_RENDERER
   release["source"] = {
     "repoURL" => EXPECTED_REPOSITORY,
@@ -181,40 +155,77 @@ def render_documents(release, values, artifact)
 
   images = values["images"]
   abort "Federation values images must be a mapping" unless images.is_a?(Hash)
-  if images.keys.sort == %w[awsCli nginx]
-    abort "legacy values require the approved POC source" unless previous_source == {
-      "repoURL" => "https://github.com/SJoon99/scalex-feature-poc.git", "path" => "chart",
-      "revision" => previous_source["revision"]
-    }
-    values = migrate_poc_values(values, artifact)
-  else
-    abort "Federation values component set must be flow and web" unless images.keys.sort == EXPECTED_COMPONENTS.keys.sort
-    EXPECTED_COMPONENTS.each do |component, repository|
-      current = images.fetch(component)
-      abort "invalid Federation values image: #{component}" unless current.is_a?(Hash)
-      promoted = artifact.fetch("components").fetch(component)
-      current["repository"] = repository
-      current["tag"] = promoted.fetch("tag")
-      current["digest"] = promoted.fetch("digest")
-      current["sourceRevision"] = promoted.fetch("sourceRevision")
-    end
+  abort "Federation values component set must be flow and web" unless images.keys.sort == EXPECTED_COMPONENTS.keys.sort
+  EXPECTED_COMPONENTS.each do |component, repository|
+    current = images.fetch(component)
+    abort "invalid Federation values image: #{component}" unless current.is_a?(Hash)
+    promoted = artifact.fetch("components").fetch(component)
+    current["repository"] = repository
+    current["tag"] = promoted.fetch("tag")
+    current["digest"] = promoted.fetch("digest")
+    current["sourceRevision"] = promoted.fetch("sourceRevision")
   end
 
   [Psych.dump(release, line_width: -1), Psych.dump(values, line_width: -1)]
 end
 
-def replace_files(paths, contents)
-  staged = paths.zip(contents, strict: true).map do |path, content|
-    file = Tempfile.new([path.basename.to_s, ".tmp"], path.dirname.to_s)
-    file.write(content)
-    file.flush
-    file.fsync
-    file.close
-    [path, file.path]
+def stage_file(path, content)
+  file = Tempfile.new([path.basename.to_s, ".tmp"], path.dirname.to_s)
+  file.binmode
+  file.write(content)
+  file.flush
+  file.fsync
+  File.chmod(File.stat(path).mode & 0o777, file.path)
+  file.close
+  file
+end
+
+def backup_file(path)
+  file = Tempfile.new([path.basename.to_s, ".backup"], path.dirname.to_s)
+  file.binmode
+  File.open(path, "rb") { |source| IO.copy_stream(source, file) }
+  file.flush
+  file.fsync
+  File.chmod(File.stat(path).mode & 0o777, file.path)
+  file.close
+  file
+end
+
+def sync_directories(paths)
+  paths.map(&:dirname).uniq.each do |directory|
+    File.open(directory, File::RDONLY) { |handle| handle.fsync }
   end
-  staged.each { |path, temporary| FileUtils.mv(temporary, path.to_s) }
-ensure
-  staged&.each { |_path, temporary| FileUtils.rm_f(temporary) }
+end
+
+def replace_files(paths, contents)
+  staged = []
+  backups = []
+  replaced = []
+  begin
+    staged = paths.zip(contents, strict: true).map { |path, content| stage_file(path, content) }
+    backups = paths.map { |path| backup_file(path) }
+    sync_directories(paths)
+    paths.each_with_index do |path, index|
+      if ENV["PROMOTION_TEST_FAIL_MOVE_INDEX"] == (index + 1).to_s
+        raise Errno::EIO, "simulated replacement failure at move #{index + 1}"
+      end
+      File.rename(staged.fetch(index).path, path)
+      replaced << index
+    end
+    sync_directories(paths)
+  rescue StandardError => error
+    rollback_errors = replaced.reverse_each.filter_map do |index|
+      File.rename(backups.fetch(index).path, paths.fetch(index))
+      nil
+    rescue StandardError => rollback_error
+      rollback_error.message
+    end
+    sync_directories(paths) if rollback_errors.empty?
+    suffix = rollback_errors.empty? ? "" : "; rollback failed: #{rollback_errors.join('; ')}"
+    abort "transactional Federation update failed: #{error.message}#{suffix}"
+  ensure
+    [*staged, *backups].each { |file| FileUtils.rm_f(file.path) }
+  end
 end
 
 options = { write: false }
@@ -252,6 +263,8 @@ end
 
 documents = render_documents(release, values, artifact)
 if options.fetch(:write)
+  refreshed_paths = release_paths(options.fetch(:federation_dir))
+  abort "Federation targets changed during promotion" unless refreshed_paths == paths
   replace_files(paths, documents)
   puts "promotion mode tracked: release.yaml and values.yaml updated"
 else

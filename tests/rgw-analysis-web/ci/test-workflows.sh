@@ -75,7 +75,15 @@ if grep -Fq 'BellTigerLee/scalex-federation' "$publish"; then
 fi
 grep -Fq 'permission-contents: write' "$publish"
 grep -Fq 'permission-pull-requests: write' "$publish"
-grep -Fq 'automation/rgw-analysis-web' "$publish"
+grep -Fq 'automation/cuty-rgw-analysis-web' "$publish"
+grep -Fq 'releases/cuty/rgw-analysis-web/release.yaml' "$publish"
+grep -Fq 'releases/cuty/rgw-analysis-web/values.yaml' "$publish"
+grep -Fq 'git diff --cached --name-only' "$publish"
+grep -Fq 'Refusing to commit unexpected staged paths.' "$publish"
+if grep -Fq 'releases/poc/rgw-analysis-web' "$publish"; then
+  echo 'promotion workflow must not mutate the legacy POC release' >&2
+  exit 1
+fi
 grep -Fq 'Manual protected merge is required.' "$publish"
 grep -Fq 'scripts/rgw-analysis-web/promote-release.sh' "$publish"
 grep -Fq 'packages: write' "$publish"
@@ -132,6 +140,184 @@ sed -i 's#SJoon99/scalex-federation#BellTigerLee/scalex-federation#g; s/owner: S
   "$tmp/.github/workflows/publish-promote.yaml"
 if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
   echo 'promotion authority drift should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i 's#releases/cuty/rgw-analysis-web#releases/poc/rgw-analysis-web#g' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'legacy POC promotion scope should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i '/git add releases\/cuty\/rgw-analysis-web\/release.yaml/{n;s#$# README.md#;}' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'extra staged promotion path should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i '/git commit -m/i\          git stage README.md' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'additional staging command in the review step should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i \
+  -e 's#BRANCH: automation/cuty-rgw-analysis-web#BRANCH: automation/wrong-release#' \
+  -e '/BRANCH: automation\/wrong-release/a\          # BRANCH: automation/cuty-rgw-analysis-web' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'wrong executable branch hidden by a comment should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i \
+  -e '0,/releases\/cuty\/rgw-analysis-web\/values.yaml/{s#releases/cuty/rgw-analysis-web/values.yaml#README.md#}' \
+  -e '/if git diff --quiet --/a\            # releases/cuty/rgw-analysis-web/values.yaml' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'mismatched diff and add path sets hidden by a comment should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i \
+  -e '/FLOW_DIGEST: /d' \
+  -e 's#--flow-digest "$FLOW_DIGEST"#--flow-digest '\''${{ needs.build-flow.outputs.digest }}'\''#' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'direct build-output interpolation in run should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i 's#--flow-digest "$FLOW_DIGEST"#--flow-digest $FLOW_DIGEST; touch /tmp/promotion-pwned; :#' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'unquoted hostile digest/operator fixture should fail' >&2
+  exit 1
+fi
+test ! -e /tmp/promotion-pwned
+
+reset_workflows
+sed -i '/git commit -m/i\          git -C . add -A' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'alternate git -C staging command should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i 's/git commit -m /git commit -am /' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'commit -am implicit staging should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i '/^          cd federation$/a\          BRANCH=automation/wrong-release' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'run-level promotion branch reassignment should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i "/^      - name: Create or update the bot-owned review PR$/a\\        shell: bash -c 'env >&2; bash {0}'" \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'custom shell on the token-bearing review step should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i '/^      - name: Create or update the bot-owned review PR$/i\      - name: Pre-stage the Federation checkout\
+        run: git -C federation add -A' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'extra promote job staging step should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i '/^env:$/a\  BASH_ENV: /tmp/attacker-controlled-bash-env' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'workflow-level BASH_ENV injection should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i '1i unexpectedTopLevel: true' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'unexpected workflow-level key should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i \
+  's#actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b#attacker/token-stealer@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'substituted token action with a full SHA should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i '/permission-pull-requests: write/a\          exfiltrate-token: true' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'arbitrary token action input should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i '/^jobs:$/a\  secret-stealer:\
+    runs-on: ubuntu-24.04\
+    steps:\
+      - name: Consume promotion private key\
+        env:\
+          STOLEN_KEY: ${{ secrets.SCALEX_PROMOTION_APP_PRIVATE_KEY }}\
+        run: test -n "$STOLEN_KEY"' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'extra workflow job consuming a promotion secret should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i \
+  '0,/docker\/login-action@184bdaa0721073962dff0199f1fb9940f07167d1/{s#docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1#attacker/credential-stealer@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa#}' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'substituted build-flow login action should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i \
+  '/^  build-web:/,$ s#docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1#attacker/credential-stealer@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb#' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'substituted build-web login action should fail' >&2
+  exit 1
+fi
+
+reset_workflows
+sed -i '/name: Install checksum-pinned CI tools/a\        env:\
+          STOLEN_KEY: ${{ secrets["SCALEX_PROMOTION_APP_PRIVATE_KEY"] }}' \
+  "$tmp/.github/workflows/publish-promote.yaml"
+if ./scripts/rgw-analysis-web/validate_workflows.rb "$tmp"; then
+  echo 'bracket-form secret expression outside approved locations should fail' >&2
   exit 1
 fi
 

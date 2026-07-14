@@ -5,8 +5,8 @@ cluster-specific 설정을 넣지 않는다. Helm values는 Secret의 이름과 
 받는다.
 
 ScaleX Federation은 External Secrets Operator를 통해 `SecretStore`
-`scalex-poc-rgw-analysis-web`의 external key
-`scalex/poc/rgw-analysis-web/rgw`를 target Secret `scalex-poc-rgw`로 materialize한다.
+`scalex-cuty-rgw-analysis-web`의 external key
+`scalex/cuty/rgw-analysis-web/rgw`를 target Secret `scalex-cuty-rgw`로 materialize한다.
 실제 값과 store backend 구성은 Infra Layer가 소유한다. Child CI가 사용하는 GitHub App
 credential은 PR 생성만 허용하고 runtime이나 cluster credential로 재사용하지 않는다.
 
