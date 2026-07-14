@@ -1,0 +1,259 @@
+name: Publish immutable images and propose promotion
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FLOW_IMAGE: ghcr.io/belltigerlee/smurf-child-flow
+  WEB_IMAGE: ghcr.io/belltigerlee/smurf-child-web
+  FEDERATION_GIT_URL: https://github.com/SJoon99/scalex-federation.git
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+        with:
+          enable-cache: true
+      - name: Install checksum-pinned CI tools
+        run: ./scripts/rgw-analysis-web/install-ci-tools.sh "$RUNNER_TEMP/bin"
+      - name: Install and sync Python 3.13
+        run: |
+          uv python install 3.13
+          uv lock --check
+          uv sync --frozen
+      - name: Run the complete offline gate
+        env:
+          MINIO_IMAGE: quay.io/minio/minio@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e
+          MINIO_MC_IMAGE: quay.io/minio/mc@sha256:aead63c77f9db9107f1696fb08ecb0faeda23729cde94b0f663edf4fe09728e3
+          MINIO_ROOT_USER: local-ci
+          MINIO_ROOT_PASSWORD: ${{ github.run_id }}
+        run: |
+          uv run --frozen ruff format --check .
+          uv run --frozen ruff check .
+          uv run --frozen basedpyright
+          actionlint
+          ./scripts/rgw-analysis-web/validate_workflows.rb .
+          tests/rgw-analysis-web/ci/test-workflows.sh
+          tests/rgw-analysis-web/ci/test-promotion.sh
+          ./scripts/test.sh
+          ./scripts/rgw-analysis-web/compose-config.sh
+          tests/rgw-analysis-web/ci/test-public-scan.sh
+          ./scripts/rgw-analysis-web/scan-public-artifacts.sh
+
+  build-flow:
+    needs: validate
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
+      - name: Log in to GHCR
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Select immutable and convenience tags
+        id: tags
+        env:
+          IMAGE: ${{ env.FLOW_IMAGE }}
+        run: |
+          {
+            echo 'value<<EOF'
+            echo "${IMAGE}:sha-${GITHUB_SHA}"
+            if [[ "${GITHUB_REF}" == 'refs/heads/main' ]]; then
+              echo "${IMAGE}:latest"
+            fi
+            echo 'EOF'
+          } >>"$GITHUB_OUTPUT"
+      - name: Build and publish flow
+        id: build
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        with:
+          context: images/rgw-analysis-web/flow
+          file: images/rgw-analysis-web/flow/Containerfile
+          build-contexts: |
+            flow-source=src/rgw-analysis-web/flow
+            web-source=src/rgw-analysis-web/web
+            project-source=.
+          push: true
+          tags: ${{ steps.tags.outputs.value }}
+          provenance: mode=max
+          sbom: true
+
+  build-web:
+    needs: validate
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435
+      - name: Log in to GHCR
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Select immutable and convenience tags
+        id: tags
+        env:
+          IMAGE: ${{ env.WEB_IMAGE }}
+        run: |
+          {
+            echo 'value<<EOF'
+            echo "${IMAGE}:sha-${GITHUB_SHA}"
+            if [[ "${GITHUB_REF}" == 'refs/heads/main' ]]; then
+              echo "${IMAGE}:latest"
+            fi
+            echo 'EOF'
+          } >>"$GITHUB_OUTPUT"
+      - name: Build and publish web
+        id: build
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        with:
+          context: images/rgw-analysis-web/web
+          file: images/rgw-analysis-web/web/Containerfile
+          build-contexts: |
+            web-source=src/rgw-analysis-web/web
+          push: true
+          tags: ${{ steps.tags.outputs.value }}
+          provenance: mode=max
+          sbom: true
+
+  package:
+    needs: [build-flow, build-web]
+    runs-on: ubuntu-24.04
+    outputs:
+      artifact-name: promotion-${{ github.sha }}
+    steps:
+      - name: Check out the exact revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Package chart and truthful promotion metadata
+        env:
+          SOURCE_REVISION: ${{ github.sha }}
+          FLOW_IMAGE_TAG: sha-${{ github.sha }}
+          FLOW_IMAGE_DIGEST: ${{ needs.build-flow.outputs.digest }}
+          WEB_IMAGE_TAG: sha-${{ github.sha }}
+          WEB_IMAGE_DIGEST: ${{ needs.build-web.outputs.digest }}
+          CI_RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          SOURCE_TREE="$(git rev-parse "${GITHUB_SHA}^{tree}")"
+          export SOURCE_TREE
+          SOURCE_DATE_EPOCH="$(git show -s --format=%ct "$GITHUB_SHA")"
+          export SOURCE_DATE_EPOCH
+          ./scripts/package-chart.sh
+      - name: Upload the promotion artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: promotion-${{ github.sha }}
+          path: dist/rgw-analysis-web/
+          if-no-files-found: error
+          retention-days: 30
+
+  promote:
+    if: github.event_name == 'push'
+    needs: [build-flow, build-web, package]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Create a short-lived ScaleX installation token
+        id: app-token
+        uses: actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b
+        with:
+          app-id: ${{ secrets.SCALEX_PROMOTION_APP_ID }}
+          private-key: ${{ secrets.SCALEX_PROMOTION_APP_PRIVATE_KEY }}
+          owner: SJoon99
+          repositories: scalex-federation
+          permission-contents: write
+          permission-pull-requests: write
+      - name: Check out child promotion logic
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: child
+          persist-credentials: false
+      - name: Check out the Federation target
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: SJoon99/scalex-federation
+          ref: main
+          token: ${{ steps.app-token.outputs.token }}
+          path: federation
+          fetch-depth: 0
+      - name: Download immutable promotion metadata
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: promotion-${{ github.sha }}
+          path: promotion
+      - name: Render the renderer-specific release update
+        run: |
+          child/scripts/rgw-analysis-web/promote-release.sh \
+            --artifact promotion/promotion.yaml \
+            --federation-dir federation \
+            --flow-digest '${{ needs.build-flow.outputs.digest }}' \
+            --web-digest '${{ needs.build-web.outputs.digest }}' \
+            --write
+      - name: Create or update the bot-owned review PR
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          TARGET_REPOSITORY: SJoon99/scalex-federation
+          BRANCH: automation/rgw-analysis-web
+        run: |
+          cd federation
+          if git diff --quiet -- \
+            releases/poc/rgw-analysis-web/release.yaml \
+            releases/poc/rgw-analysis-web/values.yaml; then
+            echo 'Pinned mode or already current; no cross-repository mutation.'
+            exit 0
+          fi
+          git config user.name 'scalex-promotion[bot]'
+          git config user.email 'scalex-promotion[bot]@users.noreply.github.com'
+          git fetch origin "$BRANCH" || true
+          git checkout -B "$BRANCH"
+          git add releases/poc/rgw-analysis-web/release.yaml \
+            releases/poc/rgw-analysis-web/values.yaml
+          git commit -m "promote rgw-analysis-web sha-${GITHUB_SHA}"
+          git push --force-with-lease origin "HEAD:${BRANCH}"
+          body='Immutable source and both component digests were generated by the child publish workflow. Manual protected merge is required.'
+          number="$(gh pr list --repo "$TARGET_REPOSITORY" --head "$BRANCH" --state open --json number --jq '.[0].number // empty')"
+          if [[ -z "$number" ]]; then
+            gh pr create --repo "$TARGET_REPOSITORY" --base main --head "$BRANCH" \
+              --title 'Promote rgw-analysis-web immutable artifacts' --body "$body"
+          else
+            gh pr edit "$number" --repo "$TARGET_REPOSITORY" \
+              --title 'Promote rgw-analysis-web immutable artifacts' --body "$body"
+          fi

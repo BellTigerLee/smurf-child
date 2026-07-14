@@ -1,49 +1,47 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 
 [project]
-name = "smurf-child"
+name = "smurf-flow"
 version = "0.1.0"
-description = "Representative SmurfX child repository contract scaffold"
-readme = "README.md"
-requires-python = ">=3.13"
+description = "Smurf RGW analysis flow"
+requires-python = ">=3.13,<3.14"
 dependencies = [
+    "boto3>=1.40,<2",
+    "botocore>=1.40,<2",
     "pydantic>=2.11,<3",
-    "pyyaml>=6.0.2,<7",
-    "rfc8785>=0.1.4,<1",
+    "pydantic-settings>=2.10,<3",
     "typer>=0.16,<1",
 ]
 
 [project.scripts]
-smurf-child = "smurf_child.cli:main"
-smurf-child-red-contract = "smurf_child.red_contract:main"
-smurf-child-handoff-guard = "smurf_child.handoff_cli:main"
+smurf-flow = "smurf_flow.cli:app"
 
 [dependency-groups]
 dev = [
-    "basedpyright>=1.29,<2",
-    "defusedxml>=0.7,<1",
+    "basedpyright>=1.31,<2",
+    "coverage>=7.10,<8",
+    "moto[server]>=5.1,<6",
     "pytest>=8.4,<9",
+    "pytest-cov>=6.2,<7",
     "ruff>=0.12,<1",
-    "types-pyyaml>=6.0.12,<7",
+    "types-boto3[s3]>=1.40,<2",
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rgw-analysis-web/flow/smurf_flow"]
 
 [tool.basedpyright]
 typeCheckingMode = "all"
 pythonVersion = "3.13"
 pythonPlatform = "All"
 include = ["src", "tests"]
-stubPath = "typings"
-exclude = [
-    "**/__pycache__",
-    "**/.venv",
-    "**/build",
-    "**/dist",
-]
-reportUnusedCallResult = "error"
+exclude = ["**/__pycache__", "**/.venv", "**/build", "**/dist"]
+extraPaths = ["src/rgw-analysis-web/flow"]
+stubPath = "src/rgw-analysis-web/flow/_stubs"
+reportUnusedCallResult = "warning"
 reportUnnecessaryTypeIgnoreComment = "error"
-reportUnnecessaryComparison = false
 reportUnusedVariable = "error"
 reportMissingParameterType = "error"
 reportPrivateUsage = "error"
@@ -55,11 +53,23 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["COM812", "ISC001", "D203", "D213", "CPY001", "TD002", "TD003", "FIX002"]
+ignore = [
+    "COM812",
+    "CPY001",
+    "D203",
+    "D213",
+    "FBT001",
+    "FBT002",
+    "FIX002",
+    "ISC001",
+    "TD002",
+    "TD003",
+]
+fixable = ["ALL"]
+unfixable = []
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["S101", "ARG", "PLR2004", "SLF001", "D"]
-"typings/**/*.pyi" = ["N803"]
+"tests/**/*.py" = ["ARG", "D", "PLR2004", "S101", "SLF001"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -78,3 +88,16 @@ minversion = "8.0"
 testpaths = ["tests"]
 addopts = ["-ra", "--strict-config", "--strict-markers"]
 filterwarnings = ["error"]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@(abc\\.)?abstractmethod",
+]

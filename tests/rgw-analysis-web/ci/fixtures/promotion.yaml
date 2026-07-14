@@ -1,0 +1,24 @@
+apiVersion: scalex.io/promotion/v1
+kind: PromotionArtifact
+source:
+  repository: https://github.com/BellTigerLee/smurf-child.git
+  revision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  tree: cccccccccccccccccccccccccccccccccccccccc
+chart:
+  path: charts/rgw-analysis-web
+  version: 0.1.0
+  package: rgw-analysis-web-0.1.0.tgz
+  digest: sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+components:
+  flow:
+    repository: ghcr.io/belltigerlee/smurf-child-flow
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    tag: sha-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
+  web:
+    repository: ghcr.io/belltigerlee/smurf-child-web
+    sourceRevision: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    tag: sha-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    digest: sha256:2222222222222222222222222222222222222222222222222222222222222222
+ci:
+  runUrl: https://github.com/BellTigerLee/smurf-child/actions/runs/1

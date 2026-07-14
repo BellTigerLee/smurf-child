@@ -1,0 +1,46 @@
+{{- range $component, $command := dict "dataset-seeder" "seed" "analyzer" "analyze" }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "rgw-analysis-web.fullname" $ }}-{{ $component }}
+  labels:
+    {{- include "rgw-analysis-web.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+    scalex.io/component: {{ $component }}
+  annotations:
+    scalex.io/source-revision: {{ $.Values.images.flow.sourceRevision | quote }}
+    argocd.argoproj.io/sync-options: Force=true,Replace=true
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "rgw-analysis-web.name" $ }}
+        app.kubernetes.io/instance: {{ $.Release.Name }}
+        app.kubernetes.io/component: {{ $component }}
+        scalex.io/release: {{ $.Release.Name }}
+        scalex.io/component: {{ $component }}
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        {{- include "rgw-analysis-web.podSecurityContext" $ | nindent 8 }}
+      containers:
+        - name: {{ $component }}
+          image: {{ include "rgw-analysis-web.image" $.Values.images.flow | quote }}
+          imagePullPolicy: {{ $.Values.images.flow.pullPolicy }}
+          args: [{{ $command | quote }}, {{ $.Values.runId | quote }}]
+          env:
+            {{- include "rgw-analysis-web.storageEnv" $ | nindent 12 }}
+          resources:
+            {{- toYaml $.Values.resources.flow | nindent 12 }}
+          securityContext:
+            {{- include "rgw-analysis-web.containerSecurityContext" $ | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

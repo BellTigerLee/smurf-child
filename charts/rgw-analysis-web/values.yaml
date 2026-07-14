@@ -1,0 +1,57 @@
+# Defaults intentionally cannot be deployed. Federation must supply immutable
+# source, tag, digest, credential Secret, endpoint, bucket, run ID, and Service
+# annotations. See tests/rgw-analysis-web/fixtures/values.valid.yaml.
+nameOverride: ""
+fullnameOverride: ""
+
+runId: ""
+
+resultSync:
+  intervalSeconds: 30
+
+storage:
+  endpointUrl: ""
+  bucket: ""
+  region: us-east-1
+  waitSeconds: 120
+  pollIntervalSeconds: 2
+
+credentials:
+  existingSecret: ""
+  accessKeyIdKey: access-key-id
+  secretAccessKeyKey: secret-access-key
+  sessionTokenKey: session-token
+
+images:
+  flow:
+    repository: ""
+    tag: ""
+    digest: ""
+    sourceRevision: ""
+    pullPolicy: IfNotPresent
+  web:
+    repository: ""
+    tag: ""
+    digest: ""
+    sourceRevision: ""
+    pullPolicy: IfNotPresent
+
+service:
+  port: 80
+  annotations: {}
+
+resources:
+  flow:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  web:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi

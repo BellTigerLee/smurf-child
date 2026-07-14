@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Waiting for RGW analysis output." />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; object-src 'none'"
+    />
+    <title>RGW Analysis Result</title>
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../report.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <article
+        class="report"
+        data-state="loading"
+        aria-busy="true"
+        aria-labelledby="report-title"
+      >
+        <header class="report-header">
+          <p class="eyebrow">ScaleX / object storage</p>
+          <h1 id="report-title">RGW Analysis Result</h1>
+          <p class="lede">The result viewer is connected and waiting for output.</p>
+        </header>
+        <section
+          class="status-rail"
+          data-component="status-rail"
+          role="status"
+          aria-labelledby="status-heading"
+        >
+          <p class="status-label">Loading</p>
+          <div class="status-copy">
+            <h2 id="status-heading">Waiting for analysis</h2>
+            <p>The analyzer has not published a result yet.</p>
+          </div>
+        </section>
+        <section class="report-section state-guidance" aria-labelledby="next-heading">
+          <div class="section-heading">
+            <p class="section-index">01</p>
+            <h2 id="next-heading">What happens next</h2>
+          </div>
+          <p>
+            This page will be replaced when the result sync process receives a complete
+            report artifact.
+          </p>
+        </section>
+        <footer class="report-footer"><p>Read-only report</p></footer>
+      </article>
+    </main>
+  </body>
+</html>

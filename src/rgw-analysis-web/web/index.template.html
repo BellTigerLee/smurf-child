@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Read-only RGW object-storage analysis results."
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; object-src 'none'"
+    />
+    <title>RGW Analysis Result</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/report.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <article
+        class="report"
+        data-state="success"
+        aria-busy="false"
+        aria-labelledby="report-title"
+      >
+        <header class="report-header">
+          <p class="eyebrow">ScaleX / object storage</p>
+          <h1 id="report-title">RGW Analysis Result</h1>
+          <p class="lede">
+            Deterministic aggregates calculated from the published CSV input.
+          </p>
+        </header>
+
+        <section
+          class="status-rail"
+          data-component="status-rail"
+          role="region"
+          aria-labelledby="status-heading"
+        >
+          <p class="status-label">Success</p>
+          <div class="status-copy">
+            <h2 id="status-heading">Analysis complete</h2>
+            <p>The result is ready for review.</p>
+          </div>
+        </section>
+
+        <section class="report-section" aria-labelledby="metrics-heading">
+          <div class="section-heading">
+            <p class="section-index">01</p>
+            <h2 id="metrics-heading">Summary</h2>
+          </div>
+          <dl class="metrics">
+            <div class="metric">
+              <dt>Rows</dt>
+              <dd data-field="row-count">__ROW_COUNT__</dd>
+            </div>
+            <div class="metric">
+              <dt>Amount sum</dt>
+              <dd data-field="amount-sum">__AMOUNT_SUM__</dd>
+            </div>
+            <div class="metric">
+              <dt>Amount average</dt>
+              <dd data-field="amount-average">__AMOUNT_AVERAGE__</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="report-section" aria-labelledby="details-heading">
+          <div class="section-heading">
+            <p class="section-index">02</p>
+            <h2 id="details-heading">Run details</h2>
+          </div>
+          <dl class="details">
+            <div class="definition-row">
+              <dt>Run ID</dt>
+              <dd><code data-field="run-id">__RUN_ID__</code></dd>
+            </div>
+            <div class="definition-row">
+              <dt>Source key</dt>
+              <dd><code data-field="source-key">__SOURCE_KEY__</code></dd>
+            </div>
+          </dl>
+        </section>
+
+        <footer class="report-footer">
+          <p>Generated at <time data-field="generated-at">__GENERATED_AT__</time></p>
+          <p>Read-only report</p>
+        </footer>
+      </article>
+    </main>
+  </body>
+</html>
