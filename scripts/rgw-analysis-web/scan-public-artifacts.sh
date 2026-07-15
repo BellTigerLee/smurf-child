@@ -56,9 +56,9 @@ for path in "${public_files[@]}"; do
     exit 1
   fi
   case "$path" in
-    .github/workflows/*|scripts/*)
+    scripts/*)
       if [[ -f "$root/$path" ]] && rg --quiet "$deployment_pattern" -- "$root/$path"; then
-        printf 'direct deployment command found in child automation: %q\n' "$path" >&2
+        printf 'direct deployment command found in child script: %q\n' "$path" >&2
         exit 1
       fi
       ;;

@@ -10,6 +10,8 @@ tests/rgw-analysis-web/artifacts/test-feature-registry.sh
 tests/rgw-analysis-web/images/test-images.sh
 tests/rgw-analysis-web/images/test-negative-contracts.sh
 tests/rgw-analysis-web/scripts/test-boundaries.sh
+tests/rgw-analysis-web/scripts/test-public-scan.sh
+tests/rgw-analysis-web/scripts/test-validate-and-build.sh
 ./scripts/validate-chart.sh
 tests/rgw-analysis-web/chart/test-negative-contracts.sh
 tests/rgw-analysis-web/artifacts/test-package.sh
