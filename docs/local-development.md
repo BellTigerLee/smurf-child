@@ -12,8 +12,8 @@ uv run --frozen basedpyright
 ./scripts/test.sh
 ```
 
-`scripts/test.sh`는 fake S3 flow, web output contract, image context, Helm lint/render와
-package contract를 검증한다. 실제 image가 필요하면 full source SHA를 지정해
+`scripts/test.sh`는 fake S3 flow, web output contract, image context, 공개 tree의
+credential 노출, Helm lint/render와 package contract를 검증한다. 실제 image가 필요하면 full source SHA를 지정해
 `SOURCE_REVISION=<40-hex> scripts/rgw-analysis-web/build-images.sh`를 실행한다.
 Compose는 local-only MinIO credential과 digest-pinned MinIO image를 환경 변수로 받아
 render/build하며 그 값은 commit하지 않는다.

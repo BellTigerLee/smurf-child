@@ -10,14 +10,13 @@
 - `src/rgw-analysis-web/`: 공개 flow source와 network dependency가 없는 web asset
 - `images/rgw-analysis-web/{flow,web}/`: component별 독립 build context
 - `charts/rgw-analysis-web/`: cluster-neutral Helm renderer artifact
-- `tests/rgw-analysis-web/`: flow, web, image, chart, CI contract test
-- `scripts/`: 로컬과 CI가 함께 쓰는 test/validate/package helper
+- `tests/rgw-analysis-web/`: flow, web, image, chart의 로컬 contract test
+- `scripts/`: 로컬 test/validate/package helper
 - `features.yaml`: feature, renderer, source, image, chart 경로의 machine-readable registry
 
-로컬 검증과 packaging은 [로컬 개발](docs/local-development.md), publication과 ScaleX
-승격은 [CI와 promotion](docs/ci-promotion.md), credential 경계는
+로컬 검증과 packaging은 [로컬 개발](docs/local-development.md), credential 경계는
 [runtime credential](docs/runtime-credentials.md)을 따른다. Repository 선언은 실제
-CI 실행, image publication 또는 cluster 배포 성공의 증거가 아니다.
+image publication 또는 cluster 배포 성공의 증거가 아니다.
 
 ## Image build와 push
 
@@ -26,15 +25,7 @@ CI 실행, image publication 또는 cluster 배포 성공의 증거가 아니다
 - `belltigerlee/test-image-flow:0.1.0`: Python 기반 `seed`, `analyze`, `fetch` 실행
 - `belltigerlee/test-image-web:0.1.0`: nginx 기반 결과 HTML 제공
 
-이 `0.1.0` image는 수동 개발·검증용이며 Federation promotion 입력으로 사용하지 않는다.
-Federation은 source commit과 image를 일대일로 묶기 위해 다음 GHCR 좌표의
-`sha-<full-commit>` tag와 registry digest를 요구한다.
-
-- `ghcr.io/belltigerlee/smurf-child-flow:sha-<full-commit>`
-- `ghcr.io/belltigerlee/smurf-child-web:sha-<full-commit>`
-
-해당 immutable image의 publication과 Federation 반영 절차는
-[CI와 promotion](docs/ci-promotion.md)을 따른다.
+이 `0.1.0` image는 수동 개발·검증용이다.
 
 Repository root에서 Docker Compose로 두 image를 한 번에 빌드한다.
 

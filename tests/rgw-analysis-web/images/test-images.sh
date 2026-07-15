@@ -25,9 +25,7 @@ grep -Fq 'flow-source: ../src/rgw-analysis-web/flow' "$build_compose"
 grep -Fq 'web-source: ../src/rgw-analysis-web/web' "$build_compose"
 grep -Fq 'project-source: ..' "$build_compose"
 grep -Fq 'x-publication-scope: manual-development-only' "$build_compose"
-grep -Fq '`0.1.0` image는 수동 개발·검증용이며 Federation promotion 입력으로 사용하지 않는다.' README.md
-grep -Fq '`ghcr.io/belltigerlee/smurf-child-flow:sha-<full-commit>`' README.md
-grep -Fq '`ghcr.io/belltigerlee/smurf-child-web:sha-<full-commit>`' README.md
+grep -Fq '`0.1.0` image는 수동 개발·검증용이다.' README.md
 grep -Fq 'docker logout' README.md
 
 ./scripts/rgw-analysis-web/validate-image-contexts.sh
