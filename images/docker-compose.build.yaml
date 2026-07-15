@@ -1,0 +1,22 @@
+x-publication-scope: manual-development-only
+
+name: smurf-rgw-analysis-images
+
+services:
+  flow:
+    image: ${FLOW_IMAGE_REPOSITORY:-belltigerlee/test-image-flow}:${FLOW_IMAGE_TAG:-0.1.0}
+    build:
+      context: rgw-analysis-web/flow
+      dockerfile: Containerfile
+      additional_contexts:
+        flow-source: ../src/rgw-analysis-web/flow
+        web-source: ../src/rgw-analysis-web/web
+        project-source: ..
+
+  web:
+    image: ${WEB_IMAGE_REPOSITORY:-belltigerlee/test-image-web}:${WEB_IMAGE_TAG:-0.1.0}
+    build:
+      context: rgw-analysis-web/web
+      dockerfile: Containerfile
+      additional_contexts:
+        web-source: ../src/rgw-analysis-web/web

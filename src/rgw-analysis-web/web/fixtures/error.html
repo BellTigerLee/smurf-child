@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="RGW analysis output could not be read." />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; object-src 'none'"
+    />
+    <title>RGW Analysis Result</title>
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../report.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <article
+        class="report"
+        data-state="error"
+        aria-busy="false"
+        aria-labelledby="report-title"
+      >
+        <header class="report-header">
+          <p class="eyebrow">ScaleX / object storage</p>
+          <h1 id="report-title">RGW Analysis Result</h1>
+          <p class="lede">The report is unavailable because its output is incomplete.</p>
+        </header>
+        <section
+          class="status-rail"
+          data-component="status-rail"
+          role="alert"
+          aria-labelledby="status-heading"
+        >
+          <p class="status-label">Error</p>
+          <div class="status-copy">
+            <h2 id="status-heading">Analysis output could not be read</h2>
+            <p>The result artifact is missing or does not match the expected contract.</p>
+          </div>
+        </section>
+        <section class="report-section state-guidance" aria-labelledby="action-heading">
+          <div class="section-heading">
+            <p class="section-index">01</p>
+            <h2 id="action-heading">Operator action</h2>
+          </div>
+          <p>Inspect the analyzer job and result sync logs, then rerun the failed work.</p>
+        </section>
+        <footer class="report-footer"><p>Read-only report</p></footer>
+      </article>
+    </main>
+  </body>
+</html>

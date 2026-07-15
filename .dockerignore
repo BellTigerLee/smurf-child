@@ -1,15 +1,16 @@
-.venv/
-__pycache__/
-.pytest_cache/
-.ruff_cache/
-.basedpyright/
-*.pyc
+.git
+.github
+.venv
+__pycache__
+.pytest_cache
+.ruff_cache
+.basedpyright
 .coverage
-coverage.xml
-htmlcov/
-build/
-dist/
-*.egg-info/
+htmlcov
+build
+dist
+tests
+*.pyc
 **/.env*
 **/kubeconfig*
 **/*.kubeconfig
@@ -35,7 +36,3 @@ dist/
 **/application_default_credentials.json
 **/service-account*.json
 **/service_account*.json
-
-# Local agent metadata
-/AGENTS.md
-/.debug-journal.md

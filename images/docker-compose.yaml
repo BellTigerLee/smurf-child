@@ -1,0 +1,86 @@
+name: smurf-rgw-analysis-web
+
+x-flow-build: &flow-build
+  context: rgw-analysis-web/flow
+  dockerfile: Containerfile
+  additional_contexts:
+    flow-source: ../src/rgw-analysis-web/flow
+    web-source: ../src/rgw-analysis-web/web
+    project-source: ..
+
+x-storage-environment: &storage-environment
+  S3_ENDPOINT_URL: http://object-store:9000
+  S3_BUCKET: ${S3_BUCKET:-rgw-analysis}
+  AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+  AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER for local development}
+  AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD for local development}
+  S3_WAIT_SECONDS: ${S3_WAIT_SECONDS:-30}
+  S3_POLL_INTERVAL_SECONDS: ${S3_POLL_INTERVAL_SECONDS:-1}
+
+services:
+  object-store:
+    image: ${MINIO_IMAGE:?set MINIO_IMAGE to an immutable minio image digest}
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER for local development}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD for local development}
+    volumes:
+      - object-store:/data
+
+  provision:
+    image: ${MINIO_MC_IMAGE:?set MINIO_MC_IMAGE to an immutable minio client digest}
+    depends_on:
+      - object-store
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - >-
+        until mc alias set local http://object-store:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"; do sleep 1; done;
+        mc mb --ignore-existing "local/$${S3_BUCKET}"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER for local development}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD for local development}
+      S3_BUCKET: ${S3_BUCKET:-rgw-analysis}
+
+  seed:
+    build: *flow-build
+    depends_on:
+      provision:
+        condition: service_completed_successfully
+    command: ["seed", "${RUN_ID:-local-run}"]
+    environment: *storage-environment
+
+  analyze:
+    build: *flow-build
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    command: ["analyze", "${RUN_ID:-local-run}"]
+    environment: *storage-environment
+
+  result-sync:
+    build: *flow-build
+    depends_on:
+      analyze:
+        condition: service_completed_successfully
+    command: ["fetch", "${RUN_ID:-local-run}", "--output-directory", "/srv/viewer"]
+    environment: *storage-environment
+    volumes:
+      - current:/srv/viewer
+
+  web:
+    build:
+      context: rgw-analysis-web/web
+      dockerfile: Containerfile
+      additional_contexts:
+        web-source: ../src/rgw-analysis-web/web
+    depends_on:
+      result-sync:
+        condition: service_completed_successfully
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    volumes:
+      - current:/srv/viewer:ro
+
+volumes:
+  current: {}
+  object-store: {}

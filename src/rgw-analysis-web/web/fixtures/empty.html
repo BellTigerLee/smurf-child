@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="RGW analysis completed without result rows." />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; object-src 'none'"
+    />
+    <title>RGW Analysis Result</title>
+    <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="../report.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <article
+        class="report"
+        data-state="empty"
+        aria-busy="false"
+        aria-labelledby="report-title"
+      >
+        <header class="report-header">
+          <p class="eyebrow">ScaleX / object storage</p>
+          <h1 id="report-title">RGW Analysis Result</h1>
+          <p class="lede">The analysis completed, but no aggregate result is present.</p>
+        </header>
+        <section
+          class="status-rail"
+          data-component="status-rail"
+          role="region"
+          aria-labelledby="status-heading"
+        >
+          <p class="status-label">Empty</p>
+          <div class="status-copy">
+            <h2 id="status-heading">No result is available</h2>
+            <p>The input contained no data rows that could be aggregated.</p>
+          </div>
+        </section>
+        <section class="report-section state-guidance" aria-labelledby="review-heading">
+          <div class="section-heading">
+            <p class="section-index">01</p>
+            <h2 id="review-heading">Review the input</h2>
+          </div>
+          <p>Confirm that the CSV contains a header and at least one valid data row.</p>
+        </section>
+        <footer class="report-footer"><p>Read-only report</p></footer>
+      </article>
+    </main>
+  </body>
+</html>

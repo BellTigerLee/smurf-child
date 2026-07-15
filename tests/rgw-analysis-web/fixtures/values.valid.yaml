@@ -1,0 +1,29 @@
+runId: fixture-run
+storage:
+  endpointUrl: https://object-store.example.invalid
+  bucket: fixture-rgw-analysis
+  region: us-east-1
+  waitSeconds: 30
+  pollIntervalSeconds: 1
+credentials:
+  existingSecret: scalex-poc-rgw
+  accessKeyIdKey: access-key-id
+  secretAccessKeyKey: secret-access-key
+  sessionTokenKey: session-token
+images:
+  flow:
+    repository: ghcr.io/belltigerlee/smurf-child-flow
+    tag: sha-0123456789abcdef0123456789abcdef01234567
+    digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
+    sourceRevision: 0123456789abcdef0123456789abcdef01234567
+    pullPolicy: IfNotPresent
+  web:
+    repository: ghcr.io/belltigerlee/smurf-child-web
+    tag: sha-89abcdef0123456789abcdef0123456789abcdef
+    digest: sha256:2222222222222222222222222222222222222222222222222222222222222222
+    sourceRevision: 89abcdef0123456789abcdef0123456789abcdef
+    pullPolicy: IfNotPresent
+service:
+  port: 80
+  annotations:
+    scalex.io/contract: rgw-analysis-web/v1

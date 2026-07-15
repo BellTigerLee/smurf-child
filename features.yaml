@@ -1,0 +1,17 @@
+apiVersion: scalex.io/features/v1
+kind: FeatureRegistry
+features:
+  - name: rgw-analysis-web
+    renderer: helm/v1
+    source:
+      flow: src/rgw-analysis-web/flow
+      web: src/rgw-analysis-web/web
+    images:
+      flow:
+        context: images/rgw-analysis-web/flow
+        repository: ghcr.io/belltigerlee/smurf-child-flow
+      web:
+        context: images/rgw-analysis-web/web
+        repository: ghcr.io/belltigerlee/smurf-child-web
+    chart: charts/rgw-analysis-web
+    tests: tests/rgw-analysis-web

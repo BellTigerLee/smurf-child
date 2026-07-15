@@ -1,0 +1,8 @@
+apiVersion: v2
+name: rgw-analysis-web
+description: Cluster-neutral RGW analysis flow and static result viewer
+type: application
+version: 0.1.0
+appVersion: "1"
+annotations:
+  scalex.io/renderer: helm/v1

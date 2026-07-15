@@ -1,3 +1,0 @@
-apiVersion: smurfx.dev/v1alpha1
-kind: ChildRequest
-target: [both

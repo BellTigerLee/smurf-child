@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rgw-analysis-web.fullname" . }}-result-web
+  labels:
+    {{- include "rgw-analysis-web.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+    scalex.io/component: result-web
+  annotations:
+    {{- toYaml .Values.service.annotations | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "rgw-analysis-web.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP

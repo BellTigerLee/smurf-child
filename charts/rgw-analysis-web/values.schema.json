@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["runId", "resultSync", "storage", "credentials", "images", "service", "resources"],
+  "properties": {
+    "nameOverride": {"type": "string"},
+    "fullnameOverride": {"type": "string"},
+    "runId": {"type": "string", "pattern": "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"},
+    "resultSync": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intervalSeconds"],
+      "properties": {"intervalSeconds": {"type": "integer", "minimum": 5, "maximum": 3600}}
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["endpointUrl", "bucket", "region", "waitSeconds", "pollIntervalSeconds"],
+      "properties": {
+        "endpointUrl": {"type": "string", "pattern": "^https?://\\S+$"},
+        "bucket": {"type": "string", "minLength": 3},
+        "region": {"type": "string", "minLength": 1},
+        "waitSeconds": {"type": "number", "exclusiveMinimum": 0},
+        "pollIntervalSeconds": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "credentials": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["existingSecret", "accessKeyIdKey", "secretAccessKeyKey", "sessionTokenKey"],
+      "properties": {
+        "existingSecret": {"type": "string", "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"},
+        "accessKeyIdKey": {"type": "string", "minLength": 1},
+        "secretAccessKeyKey": {"type": "string", "minLength": 1},
+        "sessionTokenKey": {"type": "string", "minLength": 1}
+      }
+    },
+    "images": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["flow", "web"],
+      "properties": {
+        "flow": {"$ref": "#/$defs/image"},
+        "web": {"$ref": "#/$defs/image"}
+      }
+    },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["port", "annotations"],
+      "properties": {
+        "port": {"type": "integer", "minimum": 1, "maximum": 65535},
+        "annotations": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["flow", "web"],
+      "properties": {
+        "flow": {"$ref": "#/$defs/resources"},
+        "web": {"$ref": "#/$defs/resources"}
+      }
+    }
+  },
+  "$defs": {
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "tag", "digest", "sourceRevision", "pullPolicy"],
+      "properties": {
+        "repository": {"type": "string", "pattern": "^[a-z0-9.-]+(?:/[a-z0-9._-]+)+$"},
+        "tag": {"type": "string", "pattern": "^sha-[0-9a-f]{40}$", "not": {"const": "latest"}},
+        "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "sourceRevision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "pullPolicy": {"type": "string", "enum": ["IfNotPresent", "Never"]}
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requests", "limits"],
+      "properties": {
+        "requests": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cpu", "memory"],
+          "properties": {"cpu": {"type": "string", "minLength": 1}, "memory": {"type": "string", "minLength": 1}}
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cpu", "memory"],
+          "properties": {"cpu": {"type": "string", "minLength": 1}, "memory": {"type": "string", "minLength": 1}}
+        }
+      }
+    }
+  }
+}

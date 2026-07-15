@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rgw-analysis-web.fullname" . }}-result-web
+  labels:
+    {{- include "rgw-analysis-web.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+    scalex.io/component: result-web
+  annotations:
+    scalex.io/flow-source-revision: {{ .Values.images.flow.sourceRevision | quote }}
+    scalex.io/web-source-revision: {{ .Values.images.web.sourceRevision | quote }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "rgw-analysis-web.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "rgw-analysis-web.selectorLabels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "rgw-analysis-web.podSecurityContext" . | nindent 8 }}
+      initContainers:
+        - name: viewer-bootstrap
+          image: {{ include "rgw-analysis-web.image" .Values.images.web | quote }}
+          imagePullPolicy: {{ .Values.images.web.pullPolicy }}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - >-
+              mkdir -p /srv/viewer/.bootstrap &&
+              cp /opt/viewer/bootstrap/index.html /srv/viewer/.bootstrap/index.html &&
+              ln -sfn .bootstrap /srv/viewer/current
+          resources:
+            {{- toYaml .Values.resources.web | nindent 12 }}
+          securityContext:
+            {{- include "rgw-analysis-web.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: viewer
+              mountPath: /srv/viewer
+      containers:
+        - name: result-sync
+          image: {{ include "rgw-analysis-web.image" .Values.images.flow | quote }}
+          imagePullPolicy: {{ .Values.images.flow.pullPolicy }}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - >-
+              while true; do
+                smurf-flow fetch "$RUN_ID" --output-directory /srv/viewer;
+                sleep "$SYNC_INTERVAL_SECONDS";
+              done
+          env:
+            - name: RUN_ID
+              value: {{ .Values.runId | quote }}
+            - name: SYNC_INTERVAL_SECONDS
+              value: {{ .Values.resultSync.intervalSeconds | quote }}
+            {{- include "rgw-analysis-web.storageEnv" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources.flow | nindent 12 }}
+          securityContext:
+            {{- include "rgw-analysis-web.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: viewer
+              mountPath: /srv/viewer
+            - name: tmp
+              mountPath: /tmp
+        - name: web
+          image: {{ include "rgw-analysis-web.image" .Values.images.web | quote }}
+          imagePullPolicy: {{ .Values.images.web.pullPolicy }}
+          command: ["nginx", "-g", "daemon off;"]
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          resources:
+            {{- toYaml .Values.resources.web | nindent 12 }}
+          securityContext:
+            {{- include "rgw-analysis-web.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: viewer
+              mountPath: /srv/viewer
+              readOnly: true
+            - name: nginx-runtime
+              mountPath: /tmp
+      volumes:
+        - name: viewer
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: nginx-runtime
+          emptyDir: {}
