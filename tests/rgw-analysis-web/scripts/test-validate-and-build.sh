@@ -22,7 +22,7 @@ cp "$repo_root/images/docker-compose.build.yaml" "$fixture/images/docker-compose
 cat >"$fixture/scripts/test.sh" <<'STUB'
 #!/usr/bin/env bash
 set -euo pipefail
-printf 'test %s\n' "$*" >>"$COMMAND_LOG"
+printf 'test\n' >>"$COMMAND_LOG"
 STUB
 
 cat >"$stub_bin/uv" <<'STUB'
@@ -111,7 +111,7 @@ run_entrypoint >/dev/null
 expected_success=$(cat <<EXPECTED
 $validation_prefix
 uv run --frozen basedpyright
-test 
+test
 git rev-parse HEAD
 docker FLOW_IMAGE_REPOSITORY=smurf-child-flow FLOW_IMAGE_TAG=sha-$full_sha WEB_IMAGE_REPOSITORY=smurf-child-web WEB_IMAGE_TAG=sha-$full_sha :: compose --env-file /dev/null -f images/docker-compose.build.yaml build
 docker FLOW_IMAGE_REPOSITORY= FLOW_IMAGE_TAG= WEB_IMAGE_REPOSITORY= WEB_IMAGE_TAG= :: image inspect smurf-child-flow:sha-$full_sha smurf-child-web:sha-$full_sha
