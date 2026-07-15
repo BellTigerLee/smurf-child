@@ -1,0 +1,8 @@
+validate-and-build:
+  stage: build
+  variables:
+    LC_ALL: C
+  script:
+    - ./scripts/validate-and-build.sh
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
